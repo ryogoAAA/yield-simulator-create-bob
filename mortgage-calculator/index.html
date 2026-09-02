@@ -410,8 +410,8 @@
     <div class="form-group">
       <label>毎月積立額</label>
       <div class="input-wrap">
-        <input type="number" id="nisa-monthly" value="3" min="0" step="0.5" />
-        <span class="input-unit">万円/月</span>
+        <input type="number" id="nisa-monthly" value="30000" min="0" step="1" />
+        <span class="input-unit">円/月</span>
       </div>
     </div>
 
@@ -506,8 +506,8 @@
         <div class="form-group">
           <label>毎月積立額</label>
           <div class="input-wrap">
-            <input type="number" id="nisa-monthly-a" value="3" min="0" step="0.5" />
-            <span class="input-unit">万円/月</span>
+            <input type="number" id="nisa-monthly-a" value="30000" min="0" step="1" />
+            <span class="input-unit">円/月</span>
           </div>
         </div>
         <div class="form-group">
@@ -569,8 +569,8 @@
         <div class="form-group">
           <label>毎月積立額</label>
           <div class="input-wrap">
-            <input type="number" id="nisa-monthly-b" value="3" min="0" step="0.5" />
-            <span class="input-unit">万円/月</span>
+            <input type="number" id="nisa-monthly-b" value="30000" min="0" step="1" />
+            <span class="input-unit">円/月</span>
           </div>
         </div>
         <div class="form-group">
@@ -824,7 +824,7 @@
     if (isNaN(years) || years < 1) { alert('返済期間を正しく入力してください'); return; }
 
     const nisaBalance = (parseFloat(document.getElementById('nisa-balance').value) || 0) * 10000;
-    const nisaMonthly = (parseFloat(document.getElementById('nisa-monthly').value) || 0) * 10000;
+    const nisaMonthly = parseFloat(document.getElementById('nisa-monthly').value) || 0;
     const nisaRate    = parseFloat(document.getElementById('nisa-rate').value)    || 0;
     const hasNisa     = nisaBalance > 0 || nisaMonthly > 0;
 
@@ -1158,7 +1158,7 @@
 
     // NISA計算
     const nisaBalA  = (parseFloat(document.getElementById('nisa-balance-a').value) || 0) * 10000;
-    const nisaMonA  = (parseFloat(document.getElementById('nisa-monthly-a').value) || 0) * 10000;
+    const nisaMonA  = parseFloat(document.getElementById('nisa-monthly-a').value) || 0;
     const nisaRateA = parseFloat(document.getElementById('nisa-rate-a').value) || 0;
     const hasNisaA  = nisaBalA > 0 || nisaMonA > 0;
     if (hasNisaA) {
@@ -1167,7 +1167,7 @@
     }
 
     const nisaBalB  = (parseFloat(document.getElementById('nisa-balance-b').value) || 0) * 10000;
-    const nisaMonB  = (parseFloat(document.getElementById('nisa-monthly-b').value) || 0) * 10000;
+    const nisaMonB  = parseFloat(document.getElementById('nisa-monthly-b').value) || 0;
     const nisaRateB = parseFloat(document.getElementById('nisa-rate-b').value) || 0;
     const hasNisaB  = nisaBalB > 0 || nisaMonB > 0;
     if (hasNisaB) {
