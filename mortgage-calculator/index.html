@@ -115,6 +115,17 @@
       background: #eff6ff;
     }
 
+    .section-divider {
+      font-size: 12px;
+      font-weight: 700;
+      color: #57606a;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 16px;
+      margin: 8px 0 16px;
+    }
+
     .calc-btn {
       width: 100%;
       padding: 12px;
@@ -210,6 +221,7 @@
     .td-interest   { color: #e05c2a; }
     .td-total      { font-weight: 700; }
     .td-cumulative { color: #7c5cd8; font-weight: 600; }
+    .td-nisa       { color: #2a9d5c; font-weight: 600; }
 
     .pagination {
       display: flex;
@@ -313,6 +325,32 @@
       </div>
     </div>
 
+    <div class="section-divider">NISA口座の設定</div>
+
+    <div class="form-group">
+      <label>現在のNISA残高</label>
+      <div class="input-wrap">
+        <input type="number" id="nisa-balance" value="0" min="0" step="10000" />
+        <span class="input-unit">円</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>毎月積立額</label>
+      <div class="input-wrap">
+        <input type="number" id="nisa-monthly" value="30000" min="0" step="1000" />
+        <span class="input-unit">円/月</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>想定年利回り</label>
+      <div class="input-wrap">
+        <input type="number" id="nisa-rate" value="5.0" min="0" max="30" step="0.1" />
+        <span class="input-unit">%</span>
+      </div>
+    </div>
+
     <button class="calc-btn" id="calc-btn">計算する</button>
   </div>
 
@@ -393,6 +431,18 @@
     return schedule;
   }
 
+  // ---- NISA 月次複利計算 ----
+  function calcNisa(balance, monthly, annualRate, months) {
+    const r = annualRate / 12 / 100;
+    const values = [];
+    let val = balance;
+    for (let m = 1; m <= months; m++) {
+      val = (val + monthly) * (1 + r);
+      values.push(val);
+    }
+    return values;
+  }
+
   // ---- ドーナツ SVG ----
   function buildDonut(principal, interest) {
     const total = principal + interest;
@@ -423,6 +473,7 @@
   let currentPage = 1;
   const ROWS_PER_PAGE = 12;
   let currentSchedule = [];
+  let currentHasNisa  = false;
 
   function renderTable(schedule, page) {
     const totalPages = Math.ceil(schedule.length / ROWS_PER_PAGE);
@@ -452,6 +503,7 @@
               <th>月返済額</th>
               <th>累計支払額</th>
               <th>残高</th>
+              ${currentHasNisa ? '<th>NISA評価額</th>' : ''}
             </tr>
           </thead>
           <tbody>
@@ -459,6 +511,9 @@
     let cumulative = schedule.slice(0, start).reduce((s, r) => s + r.total, 0);
     rows.forEach(row => {
       cumulative += row.total;
+      const nisaCell = currentHasNisa
+        ? `<td class="td-nisa">${row.nisaValue != null ? fmt(row.nisaValue) + '円' : '—'}</td>`
+        : '';
       tableHtml += `<tr>
         <td>${row.month}回</td>
         <td class="td-principal">${fmt(row.principal)}円</td>
@@ -466,6 +521,7 @@
         <td class="td-total">${fmt(row.total)}円</td>
         <td class="td-cumulative">${fmt(cumulative)}円</td>
         <td>${fmt(row.balance)}円</td>
+        ${nisaCell}
       </tr>`;
     });
     tableHtml += `</tbody></table></div>`;
@@ -510,12 +566,23 @@
     if (isNaN(rate) || rate < 0) { alert('年利を正しく入力してください'); return; }
     if (isNaN(years) || years < 1) { alert('返済期間を正しく入力してください'); return; }
 
+    const nisaBalance = parseFloat(document.getElementById('nisa-balance').value) || 0;
+    const nisaMonthly = parseFloat(document.getElementById('nisa-monthly').value) || 0;
+    const nisaRate    = parseFloat(document.getElementById('nisa-rate').value)    || 0;
+    const hasNisa     = nisaBalance > 0 || nisaMonthly > 0;
+
     const months = years * 12;
     const schedule = repay === 'equal_installment'
       ? calcEqualInstallment(P, rate, months)
       : calcEqualPrincipal(P, rate, months);
 
+    if (hasNisa) {
+      const nisaValues = calcNisa(nisaBalance, nisaMonthly, nisaRate, months);
+      schedule.forEach((row, i) => { row.nisaValue = nisaValues[i]; });
+    }
+
     currentSchedule = schedule;
+    currentHasNisa  = hasNisa;
     currentPage     = 1;
 
     const totalPay      = schedule.reduce((s, r) => s + r.total, 0);
@@ -559,6 +626,36 @@
           <div class="s-val" style="font-size:14px">${repayLabel}</div>
         </div>
       </div>
+      ${hasNisa ? (() => {
+        const nisaFinal      = schedule[months - 1].nisaValue;
+        const nisaTotalInvest = nisaBalance + nisaMonthly * months;
+        const nisaGain       = nisaFinal - nisaTotalInvest;
+        const gainColor      = nisaGain >= totalInterest ? '#2a9d5c' : '#e05c2a';
+        return `
+      <div class="section-divider" style="margin-top:20px">完済時 NISA vs ローン 比較</div>
+      <div class="summary-grid">
+        <div class="summary-item" style="border-color:#2a9d5c;background:#f0faf4">
+          <div class="s-label">NISA評価額（完済時）</div>
+          <div class="s-val" style="color:#2a9d5c">${fmt(nisaFinal)}<span>円</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="s-label">NISA総投資額</div>
+          <div class="s-val">${fmt(nisaTotalInvest)}<span>円</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="s-label">NISA運用益</div>
+          <div class="s-val" style="color:${gainColor}">${fmt(nisaGain)}<span>円</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="s-label">ローン総利息</div>
+          <div class="s-val" style="color:#e05c2a">${fmt(totalInterest)}<span>円</span></div>
+        </div>
+        <div class="summary-item" style="grid-column:span 2;border-color:${gainColor};background:${nisaGain >= totalInterest ? '#f0faf4' : '#fff8f4'}">
+          <div class="s-label">運用益 − ローン利息</div>
+          <div class="s-val" style="color:${gainColor}">${nisaGain >= totalInterest ? '+' : ''}${fmt(nisaGain - totalInterest)}<span>円</span></div>
+        </div>
+      </div>`;
+      })() : ''}
       <div class="chart-row" style="margin-top:20px">
         <div class="donut-wrap">
           ${donutSvg}
