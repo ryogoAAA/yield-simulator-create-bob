@@ -273,6 +273,72 @@
       border-color: #1e3a5f;
       color: #fff;
     }
+    /* ---- Compare View ---- */
+    .compare-outer {
+      max-width: 1100px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+    .compare-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 700px) {
+      .compare-inputs { grid-template-columns: 1fr; }
+    }
+    .compare-col-label {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      color: #fff;
+    }
+    .compare-col-label.label-a { background: #1e3a5f; }
+    .compare-col-label.label-b { background: #a05a00; }
+    .compare-btn-row {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .compare-summaries {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 700px) {
+      .compare-summaries { grid-template-columns: 1fr; }
+    }
+    .compare-card-a { border-top: 3px solid #1e3a5f !important; }
+    .compare-card-b { border-top: 3px solid #c07020 !important; }
+
+    /* ---- Tab Bar ---- */
+    .tab-bar {
+      background: #162d4a;
+      display: flex;
+      gap: 0;
+      padding: 0 24px;
+    }
+    .tab-btn {
+      padding: 12px 24px;
+      background: transparent;
+      border: none;
+      color: #a8c4e0;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: color .2s, border-color .2s;
+    }
+    .tab-btn:hover { color: #fff; }
+    .tab-btn.active {
+      color: #fff;
+      border-bottom-color: #3b82d4;
+    }
   </style>
 </head>
 <body>
@@ -282,6 +348,12 @@
   <p>借入条件を入力して月々の返済額をシミュレーションします</p>
 </header>
 
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="single">シミュレーション</button>
+  <button class="tab-btn" data-tab="compare">比較</button>
+</div>
+
+<div id="view-single">
 <div class="container">
   <!-- ===== 左: 入力フォーム ===== -->
   <div class="card" id="form-card">
@@ -338,8 +410,8 @@
     <div class="form-group">
       <label>毎月積立額</label>
       <div class="input-wrap">
-        <input type="number" id="nisa-monthly" value="30000" min="0" step="1000" />
-        <span class="input-unit">円/月</span>
+        <input type="number" id="nisa-monthly" value="3" min="0" step="0.5" />
+        <span class="input-unit">万円/月</span>
       </div>
     </div>
 
@@ -376,18 +448,203 @@
     </div>
   </div>
 </div>
+</div><!-- /#view-single -->
+
+<div id="view-compare" style="display:none">
+  <div class="compare-outer">
+
+    <!-- 上段: 入力欄 2列 -->
+    <div class="compare-inputs">
+
+      <!-- ケースA -->
+      <div class="card compare-card-a">
+        <div class="compare-col-label label-a">ケース A</div>
+        <div class="form-group">
+          <label>借入金額</label>
+          <div class="input-wrap">
+            <input type="number" id="principal-a" value="3000" min="1" step="10" />
+            <span class="input-unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>年利（固定金利）</label>
+          <div class="input-wrap">
+            <input type="number" id="rate-a" value="1.5" min="0.01" max="20" step="0.01" />
+            <span class="input-unit">%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>返済期間</label>
+          <div class="input-wrap">
+            <input type="number" id="years-a" value="35" min="1" max="50" step="1" />
+            <span class="input-unit">年</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>返済方式</label>
+          <div class="repay-type" id="repay-type-a">
+            <label id="lbl-a-ei">
+              <input type="radio" name="repay-a" value="equal_installment" checked />
+              <span>元利均等返済</span>
+            </label>
+            <label id="lbl-a-ep">
+              <input type="radio" name="repay-a" value="equal_principal" />
+              <span>元金均等返済</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="section-divider">NISA口座の設定</div>
+
+        <div class="form-group">
+          <label>現在のNISA残高</label>
+          <div class="input-wrap">
+            <input type="number" id="nisa-balance-a" value="0" min="0" step="10" />
+            <span class="input-unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>毎月積立額</label>
+          <div class="input-wrap">
+            <input type="number" id="nisa-monthly-a" value="3" min="0" step="0.5" />
+            <span class="input-unit">万円/月</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>想定年利回り</label>
+          <div class="input-wrap">
+            <input type="number" id="nisa-rate-a" value="5.0" min="0" max="30" step="0.1" />
+            <span class="input-unit">%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ケースB -->
+      <div class="card compare-card-b">
+        <div class="compare-col-label label-b">ケース B</div>
+        <div class="form-group">
+          <label>借入金額</label>
+          <div class="input-wrap">
+            <input type="number" id="principal-b" value="3000" min="1" step="10" />
+            <span class="input-unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>年利（固定金利）</label>
+          <div class="input-wrap">
+            <input type="number" id="rate-b" value="2.0" min="0.01" max="20" step="0.01" />
+            <span class="input-unit">%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>返済期間</label>
+          <div class="input-wrap">
+            <input type="number" id="years-b" value="35" min="1" max="50" step="1" />
+            <span class="input-unit">年</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>返済方式</label>
+          <div class="repay-type" id="repay-type-b">
+            <label id="lbl-b-ei">
+              <input type="radio" name="repay-b" value="equal_installment" checked />
+              <span>元利均等返済</span>
+            </label>
+            <label id="lbl-b-ep">
+              <input type="radio" name="repay-b" value="equal_principal" />
+              <span>元金均等返済</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="section-divider">NISA口座の設定</div>
+
+        <div class="form-group">
+          <label>現在のNISA残高</label>
+          <div class="input-wrap">
+            <input type="number" id="nisa-balance-b" value="0" min="0" step="10" />
+            <span class="input-unit">万円</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>毎月積立額</label>
+          <div class="input-wrap">
+            <input type="number" id="nisa-monthly-b" value="3" min="0" step="0.5" />
+            <span class="input-unit">万円/月</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>想定年利回り</label>
+          <div class="input-wrap">
+            <input type="number" id="nisa-rate-b" value="5.0" min="0" max="30" step="0.1" />
+            <span class="input-unit">%</span>
+          </div>
+        </div>
+      </div>
+    </div><!-- /.compare-inputs -->
+
+    <!-- 比較ボタン -->
+    <div class="compare-btn-row">
+      <button class="calc-btn" id="compare-btn" style="width:auto;padding:12px 48px">比較する</button>
+    </div>
+
+    <!-- 中段: サマリー 2列 -->
+    <div class="compare-summaries">
+      <div class="card compare-card-a" id="summary-card-a">
+        <h2>ケース A — 返済サマリー</h2>
+        <div id="summary-a">
+          <div class="placeholder">条件を入力して「比較する」を押してください</div>
+        </div>
+      </div>
+      <div class="card compare-card-b" id="summary-card-b">
+        <h2>ケース B — 返済サマリー</h2>
+        <div id="summary-b">
+          <div class="placeholder">条件を入力して「比較する」を押してください</div>
+        </div>
+      </div>
+    </div><!-- /.compare-summaries -->
+
+    <!-- 下段: グラフエリア -->
+    <div id="compare-charts" style="display:none">
+      <div class="card" style="margin-bottom:24px">
+        <h2>残高推移の比較</h2>
+        <div id="line-chart-wrap"></div>
+      </div>
+    </div>
+
+  </div><!-- /.compare-outer -->
+</div><!-- /#view-compare -->
 
 <script>
   // ---- Radio ラベルの active 制御 ----
-  document.querySelectorAll('.repay-type input[type="radio"]').forEach(radio => {
-    radio.addEventListener('change', updateRadioStyle);
+  // ---- タブ切り替え ----
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      document.getElementById('view-single').style.display  = tab === 'single'  ? '' : 'none';
+      document.getElementById('view-compare').style.display = tab === 'compare' ? '' : 'none';
+    });
   });
-  function updateRadioStyle() {
-    document.querySelectorAll('.repay-type label').forEach(lbl => lbl.classList.remove('active'));
-    const checked = document.querySelector('.repay-type input[type="radio"]:checked');
+
+  // ---- Radio ラベルの active 制御 (汎用: selector指定版) ----
+  function initRadioStyle(groupSelector) {
+    document.querySelectorAll(groupSelector + ' input[type="radio"]').forEach(radio => {
+      radio.addEventListener('change', () => updateRadioStyleFor(groupSelector));
+    });
+    updateRadioStyleFor(groupSelector);
+  }
+  function updateRadioStyleFor(groupSelector) {
+    document.querySelectorAll(groupSelector + ' label').forEach(lbl => lbl.classList.remove('active'));
+    const checked = document.querySelector(groupSelector + ' input[type="radio"]:checked');
     if (checked) checked.closest('label').classList.add('active');
   }
-  updateRadioStyle();
+  // シミュレーション用
+  initRadioStyle('#repay-type');
+  // 比較用
+  initRadioStyle('#repay-type-a');
+  initRadioStyle('#repay-type-b');
 
   // ---- 数値フォーマット ----
   const fmt = n => Math.round(n).toLocaleString('ja-JP');
@@ -567,7 +824,7 @@
     if (isNaN(years) || years < 1) { alert('返済期間を正しく入力してください'); return; }
 
     const nisaBalance = (parseFloat(document.getElementById('nisa-balance').value) || 0) * 10000;
-    const nisaMonthly = parseFloat(document.getElementById('nisa-monthly').value) || 0;
+    const nisaMonthly = (parseFloat(document.getElementById('nisa-monthly').value) || 0) * 10000;
     const nisaRate    = parseFloat(document.getElementById('nisa-rate').value)    || 0;
     const hasNisa     = nisaBalance > 0 || nisaMonthly > 0;
 
@@ -646,13 +903,9 @@
           <div class="s-label">NISA運用益</div>
           <div class="s-val" style="color:${gainColor}">${fmt(nisaGain)}<span>円</span></div>
         </div>
-        <div class="summary-item">
-          <div class="s-label">ローン総利息</div>
-          <div class="s-val" style="color:#e05c2a">${fmt(totalInterest)}<span>円</span></div>
-        </div>
-        <div class="summary-item" style="grid-column:span 2;border-color:${gainColor};background:${nisaGain >= totalInterest ? '#f0faf4' : '#fff8f4'}">
-          <div class="s-label">運用益 − ローン利息</div>
-          <div class="s-val" style="color:${gainColor}">${nisaGain >= totalInterest ? '+' : ''}${fmt(nisaGain - totalInterest)}<span>円</span></div>
+        <div class="summary-item" style="grid-column:span 2;border-color:${nisaFinal <= totalPay ? '#e05c2a' : '#2a9d5c'};background:${nisaFinal <= totalPay ? '#fff8f4' : '#f0faf4'}">
+          <div class="s-label">総返済額 − NISA評価額</div>
+          <div class="s-val" style="color:${nisaFinal <= totalPay ? '#e05c2a' : '#2a9d5c'}">${nisaFinal <= totalPay ? '+' : ''}${fmt(totalPay - nisaFinal)}<span>円</span></div>
         </div>
       </div>`;
       })() : ''}
@@ -687,6 +940,251 @@
     // テーブル表示
     document.querySelector('#schedule-card h2').textContent = '返済スケジュール（全' + months + '回）';
     renderTable(currentSchedule, currentPage);
+  });
+
+  // ================================================================
+  // 比較ビュー
+  // ================================================================
+
+  // ---- 比較用サマリーHTML生成 ----
+  function renderCompareSummary(schedule, P, repay, targetId, accentColor, nisaOpts) {
+    const totalPay       = schedule.reduce((s, r) => s + r.total, 0);
+    const totalInterest  = schedule.reduce((s, r) => s + r.interest, 0);
+    const firstMonthly   = schedule[0].total;
+    const lastMonthly    = schedule[schedule.length - 1].total;
+    const repayLabel     = repay === 'equal_installment' ? '元利均等返済' : '元金均等返済';
+    const donutSvg       = buildDonut(P, totalInterest);
+    const months         = schedule.length;
+
+    // NISAセクション
+    let nisaHtml = '';
+    if (nisaOpts.hasNisa) {
+      const nisaFinal      = schedule[months - 1].nisaValue;
+      const nisaTotalInvest = nisaOpts.balance + nisaOpts.monthly * months;
+      const nisaGain       = nisaFinal - nisaTotalInvest;
+      const gainColor      = nisaGain >= totalInterest ? '#2a9d5c' : '#e05c2a';
+      nisaHtml = `
+        <div class="section-divider" style="margin-top:20px">完済時 NISA vs ローン 比較</div>
+        <div class="summary-grid">
+          <div class="summary-item" style="border-color:#2a9d5c;background:#f0faf4">
+            <div class="s-label">NISA評価額（完済時）</div>
+            <div class="s-val" style="color:#2a9d5c">${fmt(nisaFinal)}<span>円</span></div>
+          </div>
+          <div class="summary-item">
+            <div class="s-label">NISA総投資額</div>
+            <div class="s-val">${fmt(nisaTotalInvest)}<span>円</span></div>
+          </div>
+          <div class="summary-item">
+            <div class="s-label">NISA運用益</div>
+            <div class="s-val" style="color:${gainColor}">${fmt(nisaGain)}<span>円</span></div>
+          </div>
+          <div class="summary-item" style="grid-column:span 2;border-color:${nisaFinal <= totalPay ? '#e05c2a' : '#2a9d5c'};background:${nisaFinal <= totalPay ? '#fff8f4' : '#f0faf4'}">
+            <div class="s-label">総返済額 − NISA評価額</div>
+            <div class="s-val" style="color:${nisaFinal <= totalPay ? '#e05c2a' : '#2a9d5c'}">${nisaFinal <= totalPay ? '+' : ''}${fmt(totalPay - nisaFinal)}<span>円</span></div>
+          </div>
+        </div>`;
+    }
+
+    const html = `
+      <div class="summary-grid">
+        <div class="summary-item highlight">
+          <div class="s-label">初回月返済額</div>
+          <div class="s-val" style="color:${accentColor}">${fmt(firstMonthly)}<span>円</span></div>
+        </div>
+        ${repay === 'equal_principal' ? `
+        <div class="summary-item">
+          <div class="s-label">最終月返済額</div>
+          <div class="s-val">${fmt(lastMonthly)}<span>円</span></div>
+        </div>` : `
+        <div class="summary-item">
+          <div class="s-label">毎月返済額（一定）</div>
+          <div class="s-val">${fmt(firstMonthly)}<span>円</span></div>
+        </div>`}
+        <div class="summary-item">
+          <div class="s-label">総返済額</div>
+          <div class="s-val">${fmt(totalPay)}<span>円</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="s-label">借入元金</div>
+          <div class="s-val">${fmt(P)}<span>円</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="s-label">総利息</div>
+          <div class="s-val" style="color:#e05c2a">${fmt(totalInterest)}<span>円</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="s-label">返済方式</div>
+          <div class="s-val" style="font-size:14px">${repayLabel}</div>
+        </div>
+      </div>
+      ${nisaHtml}
+      <div class="chart-row" style="margin-top:20px">
+        <div class="donut-wrap">
+          ${donutSvg}
+          <div class="donut-center">
+            <div class="dc-label">利息割合</div>
+            <div class="dc-val">${(totalInterest / totalPay * 100).toFixed(1)}%</div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#1e3a5f"></div>
+            <div>
+              <div style="font-weight:600">元金</div>
+              <div style="color:#57606a;font-size:12px">${fmt(P)}円（${(P/totalPay*100).toFixed(1)}%）</div>
+            </div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#e05c2a"></div>
+            <div>
+              <div style="font-weight:600">利息</div>
+              <div style="color:#57606a;font-size:12px">${fmt(totalInterest)}円（${(totalInterest/totalPay*100).toFixed(1)}%）</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById(targetId).innerHTML = html;
+  }
+
+  // ---- 残高推移 折れ線グラフ (純SVG) ----
+  function buildLineChart(scheduleA, scheduleB, labelA, labelB) {
+    const W = 680, H = 320;
+    const ML = 74, MR = 20, MT = 20, MB = 48;
+    const PW = W - ML - MR, PH = H - MT - MB;
+
+    // 年次サンプリング（0年目=初期値, 以降12ヶ月ごと）
+    function sampleBalances(schedule) {
+      const pts = [schedule[0].balance + schedule[0].principal]; // 初期残高(月0)
+      for (let m = 11; m < schedule.length; m += 12) pts.push(schedule[m].balance);
+      return pts;
+    }
+
+    const bA = sampleBalances(scheduleA);
+    const bB = sampleBalances(scheduleB);
+    const maxYears = Math.max(bA.length, bB.length) - 1;
+    const maxVal   = Math.max(...bA, ...bB);
+
+    // スケール
+    const xScale = i => ML + (i / maxYears) * PW;
+    const yScale = v => MT + PH - (v / maxVal) * PH;
+
+    // 軸ラベル: Y軸（万円）
+    const yTicks = 5;
+    let yAxisLines = '';
+    for (let i = 0; i <= yTicks; i++) {
+      const val = (maxVal / yTicks) * i;
+      const y   = yScale(val);
+      const label = Math.round(val / 10000).toLocaleString('ja-JP');
+      yAxisLines += `<line x1="${ML}" y1="${y}" x2="${ML + PW}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>`;
+      yAxisLines += `<text x="${ML - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#57606a">${label}</text>`;
+    }
+
+    // X軸ラベル（年）
+    const xStep = maxYears <= 20 ? 5 : 10;
+    let xAxisLabels = '';
+    for (let y = 0; y <= maxYears; y += xStep) {
+      const x = xScale(y);
+      xAxisLabels += `<line x1="${x}" y1="${MT}" x2="${x}" y2="${MT + PH}" stroke="#e5e7eb" stroke-width="1"/>`;
+      xAxisLabels += `<text x="${x}" y="${MT + PH + 18}" text-anchor="middle" font-size="11" fill="#57606a">${y}年</text>`;
+    }
+    // 最終年ラベルが含まれない場合
+    if (maxYears % xStep !== 0) {
+      const x = xScale(maxYears);
+      xAxisLabels += `<text x="${x}" y="${MT + PH + 18}" text-anchor="middle" font-size="11" fill="#57606a">${maxYears}年</text>`;
+    }
+
+    // 折れ線パスを生成
+    function toPolyline(balances, color) {
+      const pts = balances.map((v, i) => `${xScale(i)},${yScale(v)}`).join(' ');
+      return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    }
+
+    // 凡例
+    const legendY = MT + PH + 38;
+    const legendAX = ML + PW / 2 - 120;
+    const legendBX = ML + PW / 2 + 20;
+    const legend = `
+      <line x1="${legendAX}" y1="${legendY}" x2="${legendAX + 24}" y2="${legendY}" stroke="#1e3a5f" stroke-width="2.5"/>
+      <text x="${legendAX + 30}" y="${legendY + 4}" font-size="12" fill="#1e3a5f" font-weight="600">${labelA}</text>
+      <line x1="${legendBX}" y1="${legendY}" x2="${legendBX + 24}" y2="${legendY}" stroke="#c07020" stroke-width="2.5"/>
+      <text x="${legendBX + 30}" y="${legendY + 4}" font-size="12" fill="#c07020" font-weight="600">${labelB}</text>
+    `;
+
+    // Y軸タイトル
+    const yTitle = `<text transform="rotate(-90)" x="${-(MT + PH/2)}" y="14" text-anchor="middle" font-size="11" fill="#57606a">残高（万円）</text>`;
+
+    return `
+      <div style="overflow-x:auto">
+        <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:100%;display:block;margin:0 auto">
+          ${yTitle}
+          ${yAxisLines}
+          ${xAxisLabels}
+          <line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT + PH}" stroke="#d0d7de" stroke-width="1"/>
+          <line x1="${ML}" y1="${MT + PH}" x2="${ML + PW}" y2="${MT + PH}" stroke="#d0d7de" stroke-width="1"/>
+          ${toPolyline(bA, '#1e3a5f')}
+          ${toPolyline(bB, '#c07020')}
+          ${legend}
+        </svg>
+      </div>
+    `;
+  }
+
+  // ---- 比較ボタン ----
+  document.getElementById('compare-btn').addEventListener('click', () => {
+    const PA    = parseFloat(document.getElementById('principal-a').value) * 10000;
+    const rateA = parseFloat(document.getElementById('rate-a').value);
+    const yrsA  = parseInt(document.getElementById('years-a').value, 10);
+    const repA  = document.querySelector('#repay-type-a input[type="radio"]:checked').value;
+
+    const PB    = parseFloat(document.getElementById('principal-b').value) * 10000;
+    const rateB = parseFloat(document.getElementById('rate-b').value);
+    const yrsB  = parseInt(document.getElementById('years-b').value, 10);
+    const repB  = document.querySelector('#repay-type-b input[type="radio"]:checked').value;
+
+    if (isNaN(PA) || PA <= 0)      { alert('ケースA: 借入金額を正しく入力してください'); return; }
+    if (isNaN(rateA) || rateA < 0) { alert('ケースA: 年利を正しく入力してください'); return; }
+    if (isNaN(yrsA) || yrsA < 1)   { alert('ケースA: 返済期間を正しく入力してください'); return; }
+    if (isNaN(PB) || PB <= 0)      { alert('ケースB: 借入金額を正しく入力してください'); return; }
+    if (isNaN(rateB) || rateB < 0) { alert('ケースB: 年利を正しく入力してください'); return; }
+    if (isNaN(yrsB) || yrsB < 1)   { alert('ケースB: 返済期間を正しく入力してください'); return; }
+
+    const schA = repA === 'equal_installment'
+      ? calcEqualInstallment(PA, rateA, yrsA * 12)
+      : calcEqualPrincipal(PA, rateA, yrsA * 12);
+    const schB = repB === 'equal_installment'
+      ? calcEqualInstallment(PB, rateB, yrsB * 12)
+      : calcEqualPrincipal(PB, rateB, yrsB * 12);
+
+    // NISA計算
+    const nisaBalA  = (parseFloat(document.getElementById('nisa-balance-a').value) || 0) * 10000;
+    const nisaMonA  = (parseFloat(document.getElementById('nisa-monthly-a').value) || 0) * 10000;
+    const nisaRateA = parseFloat(document.getElementById('nisa-rate-a').value) || 0;
+    const hasNisaA  = nisaBalA > 0 || nisaMonA > 0;
+    if (hasNisaA) {
+      const vals = calcNisa(nisaBalA, nisaMonA, nisaRateA, yrsA * 12);
+      schA.forEach((row, i) => { row.nisaValue = vals[i]; });
+    }
+
+    const nisaBalB  = (parseFloat(document.getElementById('nisa-balance-b').value) || 0) * 10000;
+    const nisaMonB  = (parseFloat(document.getElementById('nisa-monthly-b').value) || 0) * 10000;
+    const nisaRateB = parseFloat(document.getElementById('nisa-rate-b').value) || 0;
+    const hasNisaB  = nisaBalB > 0 || nisaMonB > 0;
+    if (hasNisaB) {
+      const vals = calcNisa(nisaBalB, nisaMonB, nisaRateB, yrsB * 12);
+      schB.forEach((row, i) => { row.nisaValue = vals[i]; });
+    }
+
+    renderCompareSummary(schA, PA, repA, 'summary-a', '#1e3a5f',
+      { hasNisa: hasNisaA, balance: nisaBalA, monthly: nisaMonA });
+    renderCompareSummary(schB, PB, repB, 'summary-b', '#c07020',
+      { hasNisa: hasNisaB, balance: nisaBalB, monthly: nisaMonB });
+
+    // 折れ線グラフ
+    const labelA = `A: ${Math.round(PA/10000)}万円 ${rateA}% ${yrsA}年`;
+    const labelB = `B: ${Math.round(PB/10000)}万円 ${rateB}% ${yrsB}年`;
+    document.getElementById('line-chart-wrap').innerHTML = buildLineChart(schA, schB, labelA, labelB);
+    document.getElementById('compare-charts').style.display = '';
   });
 </script>
 </body>
