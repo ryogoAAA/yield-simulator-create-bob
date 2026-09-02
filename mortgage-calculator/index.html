@@ -290,8 +290,8 @@
     <div class="form-group">
       <label>借入金額</label>
       <div class="input-wrap">
-        <input type="number" id="principal" value="30000000" min="100000" step="100000" />
-        <span class="input-unit">円</span>
+        <input type="number" id="principal" value="3000" min="1" step="10" />
+        <span class="input-unit">万円</span>
       </div>
     </div>
 
@@ -557,7 +557,7 @@
 
   // ---- 計算メイン ----
   document.getElementById('calc-btn').addEventListener('click', () => {
-    const P     = parseFloat(document.getElementById('principal').value);
+    const P     = parseFloat(document.getElementById('principal').value) * 10000;
     const rate  = parseFloat(document.getElementById('rate').value);
     const years = parseInt(document.getElementById('years').value, 10);
     const repay = document.querySelector('.repay-type input[type="radio"]:checked').value;
