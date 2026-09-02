@@ -206,12 +206,10 @@
       white-space: nowrap;
     }
     tbody td:first-child { text-align: center; color: #57606a; }
-    .td-diff-plus  { color: #e05c2a; font-weight: 600; }
-    .td-diff-minus { color: #2a9d5c; font-weight: 600; }
-    .td-diff-zero  { color: #57606a; }
-    .td-principal { color: #1e3a5f; font-weight: 600; }
-    .td-interest  { color: #e05c2a; }
-    .td-total     { font-weight: 700; }
+    .td-principal  { color: #1e3a5f; font-weight: 600; }
+    .td-interest   { color: #e05c2a; }
+    .td-total      { font-weight: 700; }
+    .td-cumulative { color: #7c5cd8; font-weight: 600; }
 
     .pagination {
       display: flex;
@@ -452,25 +450,21 @@
               <th>元金返済額</th>
               <th>利息</th>
               <th>月返済額</th>
-              <th>支払増減額</th>
+              <th>累計支払額</th>
               <th>残高</th>
             </tr>
           </thead>
           <tbody>
     `;
-    const baseTotal = schedule[0].total;
+    let cumulative = schedule.slice(0, start).reduce((s, r) => s + r.total, 0);
     rows.forEach(row => {
-      const diff = row.total - baseTotal;
-      const diffClass = diff > 0 ? 'td-diff-plus' : diff < 0 ? 'td-diff-minus' : 'td-diff-zero';
-      const diffText  = diff === 0 ? '±0円'
-                      : diff > 0   ? `+${fmt(diff)}円`
-                      :              `▲${fmt(-diff)}円`;
+      cumulative += row.total;
       tableHtml += `<tr>
         <td>${row.month}回</td>
         <td class="td-principal">${fmt(row.principal)}円</td>
         <td class="td-interest">${fmt(row.interest)}円</td>
         <td class="td-total">${fmt(row.total)}円</td>
-        <td class="${diffClass}">${diffText}</td>
+        <td class="td-cumulative">${fmt(cumulative)}円</td>
         <td>${fmt(row.balance)}円</td>
       </tr>`;
     });
