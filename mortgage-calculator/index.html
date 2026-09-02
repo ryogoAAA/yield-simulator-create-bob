@@ -690,11 +690,12 @@
 
   // ---- NISA 月次複利計算 ----
   function calcNisa(balance, monthly, annualRate, months) {
-    const r = annualRate / 12 / 100;
+    const r = annualRate / 100;
     const values = [];
     let val = balance;
     for (let m = 1; m <= months; m++) {
-      val = (val + monthly) * (1 + r);
+      val += monthly;
+      if (m % 12 === 0) val *= (1 + r);
       values.push(val);
     }
     return values;
