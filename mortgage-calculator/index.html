@@ -330,8 +330,8 @@
     <div class="form-group">
       <label>現在のNISA残高</label>
       <div class="input-wrap">
-        <input type="number" id="nisa-balance" value="0" min="0" step="10000" />
-        <span class="input-unit">円</span>
+        <input type="number" id="nisa-balance" value="0" min="0" step="10" />
+        <span class="input-unit">万円</span>
       </div>
     </div>
 
@@ -566,7 +566,7 @@
     if (isNaN(rate) || rate < 0) { alert('年利を正しく入力してください'); return; }
     if (isNaN(years) || years < 1) { alert('返済期間を正しく入力してください'); return; }
 
-    const nisaBalance = parseFloat(document.getElementById('nisa-balance').value) || 0;
+    const nisaBalance = (parseFloat(document.getElementById('nisa-balance').value) || 0) * 10000;
     const nisaMonthly = parseFloat(document.getElementById('nisa-monthly').value) || 0;
     const nisaRate    = parseFloat(document.getElementById('nisa-rate').value)    || 0;
     const hasNisa     = nisaBalance > 0 || nisaMonthly > 0;
