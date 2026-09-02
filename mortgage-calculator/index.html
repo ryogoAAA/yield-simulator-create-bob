@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>住宅ローン計算機</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: #f0f4f8;
+      color: #1f2328;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 20px 24px;
+      text-align: center;
+    }
+    header h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.04em; }
+    header p  { font-size: 13px; color: #a8c4e0; margin-top: 4px; }
+
+    .container {
+      max-width: 900px;
+      margin: 32px auto;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 700px) {
+      .container { grid-template-columns: 1fr; }
+    }
+
+    /* ---- Card ---- */
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 24px;
+    }
+    .card h2 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #1e3a5f;
+      border-bottom: 2px solid #3b82d4;
+      padding-bottom: 8px;
+    }
+
+    /* ---- Form ---- */
+    .form-group { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 13px;
+      color: #57606a;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .input-wrap {
+      display: flex;
+      align-items: center;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .input-wrap:focus-within { border-color: #3b82d4; box-shadow: 0 0 0 3px rgba(59,130,212,.15); }
+    .input-wrap input {
+      flex: 1;
+      border: none;
+      outline: none;
+      padding: 9px 12px;
+      font-size: 15px;
+      background: transparent;
+      min-width: 0;
+    }
+    .input-unit {
+      padding: 9px 12px;
+      background: #f7f8fa;
+      color: #57606a;
+      font-size: 13px;
+      white-space: nowrap;
+      border-left: 1px solid #d0d7de;
+    }
+
+    .repay-type {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .repay-type label {
+      cursor: pointer;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: #57606a;
+      transition: border-color .2s, color .2s, background .2s;
+    }
+    .repay-type input[type="radio"] { display: none; }
+    .repay-type input[type="radio"]:checked + span {
+      /* applied via JS on label */
+    }
+    .repay-type label.active {
+      border-color: #3b82d4;
+      color: #3b82d4;
+      background: #eff6ff;
+    }
+
+    .calc-btn {
+      width: 100%;
+      padding: 12px;
+      background: #1e3a5f;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s;
+      margin-top: 8px;
+    }
+    .calc-btn:hover { background: #2c5282; }
+
+    /* ---- Right Panel ---- */
+    .right-panel { display: flex; flex-direction: column; gap: 20px; }
+
+    /* ---- Summary ---- */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    @media (max-width: 500px) { .summary-grid { grid-template-columns: 1fr 1fr; } }
+    .summary-item {
+      background: #f7f8fa;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 14px 12px;
+      text-align: center;
+    }
+    .summary-item .s-label { font-size: 11px; color: #57606a; }
+    .summary-item .s-val {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e3a5f;
+      line-height: 1.3;
+      margin-top: 4px;
+    }
+    .summary-item .s-val span { font-size: 12px; font-weight: 500; }
+    .summary-item.highlight { background: #eff6ff; border-color: #3b82d4; }
+    .summary-item.highlight .s-val { color: #3b82d4; }
+
+    /* ---- Donut Chart ---- */
+    .chart-row {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .donut-wrap { position: relative; flex-shrink: 0; }
+    .donut-wrap svg { display: block; }
+    .donut-center {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    .donut-center .dc-label { font-size: 11px; color: #57606a; }
+    .donut-center .dc-val { font-size: 16px; font-weight: 700; color: #1e3a5f; }
+    .legend { display: flex; flex-direction: column; gap: 10px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ---- Table ---- */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead tr { background: #1e3a5f; color: #fff; }
+    thead th {
+      padding: 10px 12px;
+      text-align: right;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    thead th:first-child { text-align: center; }
+    tbody tr:nth-child(even) { background: #f7f8fa; }
+    tbody tr:hover { background: #eff6ff; }
+    tbody td {
+      padding: 8px 12px;
+      text-align: right;
+      border-bottom: 1px solid #e5e7eb;
+      white-space: nowrap;
+    }
+    tbody td:first-child { text-align: center; color: #57606a; }
+    .td-principal { color: #1e3a5f; font-weight: 600; }
+    .td-interest  { color: #e05c2a; }
+    .td-total     { font-weight: 700; }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .pagination button {
+      padding: 6px 14px;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background .15s;
+    }
+    .pagination button:hover:not(:disabled) { background: #eff6ff; border-color: #3b82d4; }
+    .pagination button:disabled { opacity: .4; cursor: default; }
+    .pagination .page-info { font-size: 13px; color: #57606a; min-width: 80px; text-align: center; }
+
+    .placeholder {
+      text-align: center;
+      padding: 40px 20px;
+      color: #57606a;
+      font-size: 14px;
+    }
+    .placeholder svg { display: block; margin: 0 auto 12px; opacity: .25; }
+
+    /* ---- Year selector ---- */
+    .year-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .year-tab {
+      padding: 4px 12px;
+      border: 1px solid #d0d7de;
+      border-radius: 20px;
+      background: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .year-tab.active {
+      background: #1e3a5f;
+      border-color: #1e3a5f;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>住宅ローン計算機</h1>
+  <p>借入条件を入力して月々の返済額をシミュレーションします</p>
+</header>
+
+<div class="container">
+  <!-- ===== 左: 入力フォーム ===== -->
+  <div class="card" id="form-card">
+    <h2>借入条件の入力</h2>
+
+    <div class="form-group">
+      <label>借入金額</label>
+      <div class="input-wrap">
+        <input type="number" id="principal" value="30000000" min="100000" step="100000" />
+        <span class="input-unit">円</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>年利（固定金利）</label>
+      <div class="input-wrap">
+        <input type="number" id="rate" value="1.5" min="0.01" max="20" step="0.01" />
+        <span class="input-unit">%</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>返済期間</label>
+      <div class="input-wrap">
+        <input type="number" id="years" value="35" min="1" max="50" step="1" />
+        <span class="input-unit">年</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>返済方式</label>
+      <div class="repay-type" id="repay-type">
+        <label id="lbl-equal-installment">
+          <input type="radio" name="repay" value="equal_installment" checked />
+          <span>元利均等返済</span>
+        </label>
+        <label id="lbl-equal-principal">
+          <input type="radio" name="repay" value="equal_principal" />
+          <span>元金均等返済</span>
+        </label>
+      </div>
+    </div>
+
+    <button class="calc-btn" id="calc-btn">計算する</button>
+  </div>
+
+  <!-- ===== 右: 結果パネル ===== -->
+  <div class="right-panel" id="result-panel">
+    <div class="card" id="summary-card">
+      <h2>返済サマリー</h2>
+      <div id="summary-content">
+        <div class="placeholder">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          条件を入力して「計算する」を押してください
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="schedule-card">
+      <h2>返済スケジュール</h2>
+      <div id="schedule-content">
+        <div class="placeholder">計算結果がここに表示されます</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- Radio ラベルの active 制御 ----
+  document.querySelectorAll('.repay-type input[type="radio"]').forEach(radio => {
+    radio.addEventListener('change', updateRadioStyle);
+  });
+  function updateRadioStyle() {
+    document.querySelectorAll('.repay-type label').forEach(lbl => lbl.classList.remove('active'));
+    const checked = document.querySelector('.repay-type input[type="radio"]:checked');
+    if (checked) checked.closest('label').classList.add('active');
+  }
+  updateRadioStyle();
+
+  // ---- 数値フォーマット ----
+  const fmt = n => Math.round(n).toLocaleString('ja-JP');
+
+  // ---- 元利均等返済 (毎月均等) ----
+  function calcEqualInstallment(P, annualRate, months) {
+    const r = annualRate / 12 / 100;
+    const schedule = [];
+    if (r === 0) {
+      const monthly = P / months;
+      let balance = P;
+      for (let m = 1; m <= months; m++) {
+        balance -= monthly;
+        schedule.push({ month: m, principal: monthly, interest: 0, total: monthly, balance: Math.max(0, balance) });
+      }
+      return schedule;
+    }
+    const monthly = P * r * Math.pow(1 + r, months) / (Math.pow(1 + r, months) - 1);
+    let balance = P;
+    for (let m = 1; m <= months; m++) {
+      const interest  = balance * r;
+      const principal = monthly - interest;
+      balance -= principal;
+      schedule.push({ month: m, principal, interest, total: monthly, balance: Math.max(0, balance) });
+    }
+    return schedule;
+  }
+
+  // ---- 元金均等返済 (毎月の元金は一定) ----
+  function calcEqualPrincipal(P, annualRate, months) {
+    const r = annualRate / 12 / 100;
+    const principalPerMonth = P / months;
+    const schedule = [];
+    let balance = P;
+    for (let m = 1; m <= months; m++) {
+      const interest = balance * r;
+      const total    = principalPerMonth + interest;
+      balance -= principalPerMonth;
+      schedule.push({ month: m, principal: principalPerMonth, interest, total, balance: Math.max(0, balance) });
+    }
+    return schedule;
+  }
+
+  // ---- ドーナツ SVG ----
+  function buildDonut(principal, interest) {
+    const total = principal + interest;
+    const pPct  = principal / total;
+    const R = 60, r = 38, cx = 70, cy = 70, size = 140;
+    function polarToXY(cx, cy, R, angleDeg) {
+      const a = (angleDeg - 90) * Math.PI / 180;
+      return [cx + R * Math.cos(a), cy + R * Math.sin(a)];
+    }
+    function slice(startDeg, sweepDeg, color) {
+      if (sweepDeg >= 360) sweepDeg = 359.99;
+      const [x1, y1] = polarToXY(cx, cy, R, startDeg);
+      const [x2, y2] = polarToXY(cx, cy, R, startDeg + sweepDeg);
+      const [ix1, iy1] = polarToXY(cx, cy, r, startDeg);
+      const [ix2, iy2] = polarToXY(cx, cy, r, startDeg + sweepDeg);
+      const large = sweepDeg > 180 ? 1 : 0;
+      return `<path d="M${x1},${y1} A${R},${R} 0 ${large},1 ${x2},${y2} L${ix2},${iy2} A${r},${r} 0 ${large},0 ${ix1},${iy1} Z" fill="${color}" />`;
+    }
+    const pSweep = pPct * 360;
+    const iSweep = 360 - pSweep;
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      ${slice(0,        pSweep, '#1e3a5f')}
+      ${slice(pSweep,   iSweep, '#e05c2a')}
+    </svg>`;
+  }
+
+  // ---- ページネーション状態 ----
+  let currentPage = 1;
+  const ROWS_PER_PAGE = 12;
+  let currentSchedule = [];
+
+  function renderTable(schedule, page) {
+    const totalPages = Math.ceil(schedule.length / ROWS_PER_PAGE);
+    const start = (page - 1) * ROWS_PER_PAGE;
+    const end   = Math.min(start + ROWS_PER_PAGE, schedule.length);
+    const rows  = schedule.slice(start, end);
+
+    // 年タブ生成
+    const totalYears = Math.ceil(schedule.length / 12);
+    let yearTabs = '<div class="year-tabs" id="year-tabs">';
+    for (let y = 1; y <= totalYears; y++) {
+      const pageForYear = Math.ceil((y * 12) / ROWS_PER_PAGE);
+      const activeClass = (page >= Math.ceil(((y-1)*12+1) / ROWS_PER_PAGE) &&
+                           page <= Math.ceil((y*12) / ROWS_PER_PAGE)) ? 'active' : '';
+      yearTabs += `<button class="year-tab ${activeClass}" data-year="${y}">${y}年目</button>`;
+    }
+    yearTabs += '</div>';
+
+    let tableHtml = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>回数</th>
+              <th>元金返済額</th>
+              <th>利息</th>
+              <th>月返済額</th>
+              <th>残高</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    rows.forEach(row => {
+      tableHtml += `<tr>
+        <td>${row.month}回</td>
+        <td class="td-principal">${fmt(row.principal)}円</td>
+        <td class="td-interest">${fmt(row.interest)}円</td>
+        <td class="td-total">${fmt(row.total)}円</td>
+        <td>${fmt(row.balance)}円</td>
+      </tr>`;
+    });
+    tableHtml += `</tbody></table></div>`;
+
+    const paginationHtml = `
+      <div class="pagination">
+        <button id="pg-first" ${page === 1 ? 'disabled' : ''}>&laquo; 最初</button>
+        <button id="pg-prev"  ${page === 1 ? 'disabled' : ''}>&lsaquo; 前へ</button>
+        <span class="page-info">${page} / ${totalPages} ページ</span>
+        <button id="pg-next"  ${page === totalPages ? 'disabled' : ''}>次へ &rsaquo;</button>
+        <button id="pg-last"  ${page === totalPages ? 'disabled' : ''}>最後 &raquo;</button>
+      </div>
+    `;
+
+    document.getElementById('schedule-content').innerHTML = yearTabs + tableHtml + paginationHtml;
+
+    // 年タブイベント
+    document.querySelectorAll('.year-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const y = parseInt(btn.dataset.year);
+        const targetPage = Math.ceil((y - 1) * 12 / ROWS_PER_PAGE) + 1;
+        currentPage = targetPage;
+        renderTable(currentSchedule, currentPage);
+      });
+    });
+
+    // ページネーションイベント
+    document.getElementById('pg-first').addEventListener('click', () => { currentPage = 1; renderTable(currentSchedule, currentPage); });
+    document.getElementById('pg-prev' ).addEventListener('click', () => { currentPage--;    renderTable(currentSchedule, currentPage); });
+    document.getElementById('pg-next' ).addEventListener('click', () => { currentPage++;    renderTable(currentSchedule, currentPage); });
+    document.getElementById('pg-last' ).addEventListener('click', () => { currentPage = totalPages; renderTable(currentSchedule, currentPage); });
+  }
+
+  // ---- 計算メイン ----
+  document.getElementById('calc-btn').addEventListener('click', () => {
+    const P     = parseFloat(document.getElementById('principal').value);
+    const rate  = parseFloat(document.getElementById('rate').value);
+    const years = parseInt(document.getElementById('years').value, 10);
+    const repay = document.querySelector('.repay-type input[type="radio"]:checked').value;
+
+    if (isNaN(P) || P <= 0)     { alert('借入金額を正しく入力してください'); return; }
+    if (isNaN(rate) || rate < 0) { alert('年利を正しく入力してください'); return; }
+    if (isNaN(years) || years < 1) { alert('返済期間を正しく入力してください'); return; }
+
+    const months = years * 12;
+    const schedule = repay === 'equal_installment'
+      ? calcEqualInstallment(P, rate, months)
+      : calcEqualPrincipal(P, rate, months);
+
+    currentSchedule = schedule;
+    currentPage     = 1;
+
+    const totalPay      = schedule.reduce((s, r) => s + r.total, 0);
+    const totalInterest = schedule.reduce((s, r) => s + r.interest, 0);
+    const totalPrincipal = P;
+    const firstMonthly  = schedule[0].total;
+    const lastMonthly   = schedule[schedule.length - 1].total;
+    const repayLabel    = repay === 'equal_installment' ? '元利均等返済' : '元金均等返済';
+
+    // サマリー表示
+    const donutSvg = buildDonut(totalPrincipal, totalInterest);
+    const summaryHtml = `
+      <div class="summary-grid">
+        <div class="summary-item highlight">
+          <div class="s-label">初回月返済額</div>
+          <div class="s-val">${fmt(firstMonthly)}<span>円</span></div>
+        </div>
+        ${repay === 'equal_principal' ? `
+        <div class="summary-item">
+          <div class="s-label">最終月返済額</div>
+          <div class="s-val">${fmt(lastMonthly)}<span>円</span></div>
+        </div>` : `
+        <div class="summary-item">
+          <div class="s-label">毎月返済額（一定）</div>
+          <div class="s-val">${fmt(firstMonthly)}<span>円</span></div>
+        </div>`}
+        <div class="summary-item">
+          <div class="s-label">総返済額</div>
+          <div class="s-val">${fmt(totalPay)}<span>円</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="s-label">借入元金</div>
+          <div class="s-val">${fmt(totalPrincipal)}<span>円</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="s-label">総利息</div>
+          <div class="s-val" style="color:#e05c2a">${fmt(totalInterest)}<span>円</span></div>
+        </div>
+        <div class="summary-item">
+          <div class="s-label">返済方式</div>
+          <div class="s-val" style="font-size:14px">${repayLabel}</div>
+        </div>
+      </div>
+      <div class="chart-row" style="margin-top:20px">
+        <div class="donut-wrap">
+          ${donutSvg}
+          <div class="donut-center">
+            <div class="dc-label">利息割合</div>
+            <div class="dc-val">${(totalInterest / totalPay * 100).toFixed(1)}%</div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#1e3a5f"></div>
+            <div>
+              <div style="font-weight:600">元金</div>
+              <div style="color:#57606a;font-size:12px">${fmt(totalPrincipal)}円（${(totalPrincipal/totalPay*100).toFixed(1)}%）</div>
+            </div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#e05c2a"></div>
+            <div>
+              <div style="font-weight:600">利息</div>
+              <div style="color:#57606a;font-size:12px">${fmt(totalInterest)}円（${(totalInterest/totalPay*100).toFixed(1)}%）</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('summary-content').innerHTML = summaryHtml;
+
+    // テーブル表示
+    document.querySelector('#schedule-card h2').textContent = '返済スケジュール（全' + months + '回）';
+    renderTable(currentSchedule, currentPage);
+  });
+</script>
+</body>
+</html>
