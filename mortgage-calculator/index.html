@@ -261,6 +261,22 @@
     }
     .placeholder svg { display: block; margin: 0 auto 12px; opacity: .25; }
 
+    /* ---- Area chart tooltip ---- */
+    .area-chart-wrap { position: relative; margin-top: 20px; overflow-x: auto; }
+    .area-tooltip {
+      position: absolute;
+      background: #1e3a5f;
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.6;
+      padding: 8px 12px;
+      border-radius: 6px;
+      pointer-events: none;
+      white-space: nowrap;
+      display: none;
+      z-index: 10;
+    }
+
     /* ---- Year selector ---- */
     .year-tabs {
       display: flex;
@@ -739,31 +755,154 @@
     </svg>`;
   }
 
-  // ---- ページネーション状態 ----
-  let currentPage = 1;
-  const ROWS_PER_PAGE = 12;
+  // ---- 積み上げ面グラフ（ホバーツールチップ付き） ----
+  let _areaChartCounter = 0;
+  function buildStackedBar(schedule) {
+    const id  = 'ac' + (++_areaChartCounter);
+    const W = 560, H = 240;
+    const ML = 62, MR = 12, MT = 14, MB = 36;
+    const PW = W - ML - MR, PH = H - MT - MB;
+    const N  = schedule.length;
+
+    // 各月の値→SVG座標
+    const maxVal = Math.max(...schedule.map(r => r.principal + r.interest));
+    const xOf = i => ML + (i / (N - 1)) * PW;
+    const yOf = v => MT + PH - (v / maxVal) * PH;
+
+    // 積み上げ面パス: 利息（上）＋元金（下）
+    // 下エリア: 元金（0→principal）
+    const pPts  = schedule.map((r, i) => `${xOf(i)},${yOf(r.principal)}`).join(' ');
+    const basePts = `${xOf(0)},${MT+PH} ${xOf(N-1)},${MT+PH}`;
+    const principalArea = `M${xOf(0)},${MT+PH} ${schedule.map((r,i)=>`L${xOf(i)},${yOf(r.principal)}`).join(' ')} L${xOf(N-1)},${MT+PH} Z`;
+
+    // 上エリア: 元金+利息 → 元金 のポリゴン
+    const topPts    = schedule.map((r, i) => `${xOf(i)},${yOf(r.principal + r.interest)}`).join(' ');
+    const bottomPts = schedule.map((r, i) => `${xOf(N-1-i)},${yOf(schedule[N-1-i].principal)}`).join(' ');
+    const interestArea = `M${xOf(0)},${yOf(schedule[0].principal + schedule[0].interest)} `
+      + schedule.map((r,i)=>`L${xOf(i)},${yOf(r.principal+r.interest)}`).join(' ')
+      + ' ' + schedule.slice().reverse().map((r,i)=>`L${xOf(N-1-i)},${yOf(r.principal)}`).join(' ') + ' Z';
+
+    // Y軸目盛り
+    const yTicks = 4;
+    let yLines = '';
+    for (let i = 0; i <= yTicks; i++) {
+      const val = maxVal / yTicks * i;
+      const y   = yOf(val);
+      const lbl = Math.round(val / 10000).toLocaleString('ja-JP') + '万';
+      yLines += `<line x1="${ML}" y1="${y}" x2="${ML+PW}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>`;
+      yLines += `<text x="${ML-4}" y="${y+4}" text-anchor="end" font-size="10" fill="#8a96a3">${lbl}</text>`;
+    }
+
+    // X軸ラベル（年単位）
+    const totalYears = Math.ceil(N / 12);
+    const xStep = totalYears <= 20 ? 5 : 10;
+    let xLabels = '';
+    for (let y = 0; y <= totalYears; y += xStep) {
+      const mi = Math.min(y * 12, N - 1);
+      const x  = xOf(mi);
+      xLabels += `<text x="${x}" y="${MT+PH+16}" text-anchor="middle" font-size="10" fill="#8a96a3">${y}年</text>`;
+    }
+    if (totalYears % xStep !== 0) {
+      xLabels += `<text x="${xOf(N-1)}" y="${MT+PH+16}" text-anchor="middle" font-size="10" fill="#8a96a3">${totalYears}年</text>`;
+    }
+
+    // 凡例
+    const legY = MT + PH + 30;
+    const legend = `
+      <circle cx="${ML+10}" cy="${legY-3}" r="5" fill="#3b82d4"/>
+      <text x="${ML+18}" y="${legY}" font-size="11" fill="#1f2328" font-weight="600">元金</text>
+      <circle cx="${ML+54}" cy="${legY-3}" r="5" fill="#f59e42"/>
+      <text x="${ML+62}" y="${legY}" font-size="11" fill="#1f2328" font-weight="600">利息</text>
+    `;
+
+    // ホバー用の不可視オーバーレイ列（各月分）
+    const colW = PW / N;
+    let cols = '';
+    schedule.forEach((r, i) => {
+      cols += `<rect class="ac-col" data-i="${i}" x="${xOf(i) - colW/2}" y="${MT}" width="${colW}" height="${PH}" fill="transparent" stroke="none"/>`;
+    });
+
+    const svgHtml = `
+      <svg id="${id}-svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:100%;display:block;margin:0 auto;cursor:crosshair">
+        ${yLines}
+        <defs>
+          <clipPath id="${id}-clip"><rect x="${ML}" y="${MT}" width="${PW}" height="${PH}"/></clipPath>
+        </defs>
+        <g clip-path="url(#${id}-clip)">
+          <path d="${principalArea}" fill="#3b82d4" opacity="0.85"/>
+          <path d="${interestArea}"  fill="#f59e42" opacity="0.85"/>
+        </g>
+        <line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+PH}" stroke="#d0d7de" stroke-width="1"/>
+        <line x1="${ML}" y1="${MT+PH}" x2="${ML+PW}" y2="${MT+PH}" stroke="#d0d7de" stroke-width="1"/>
+        ${xLabels}${legend}
+        <line id="${id}-cursor" x1="0" y1="${MT}" x2="0" y2="${MT+PH}" stroke="#1e3a5f" stroke-width="1" stroke-dasharray="4,3" opacity="0" pointer-events="none"/>
+        <g clip-path="url(#${id}-clip)">${cols}</g>
+      </svg>
+      <div id="${id}-tip" class="area-tooltip"></div>
+    `;
+
+    // JS初期化を次フレームで実行
+    setTimeout(() => {
+      const svg     = document.getElementById(id + '-svg');
+      if (!svg) return;
+      const cursor  = document.getElementById(id + '-cursor');
+      const tip     = document.getElementById(id + '-tip');
+      const wrap    = svg.parentElement;
+
+      svg.querySelectorAll('.ac-col').forEach(col => {
+        col.addEventListener('mouseenter', e => {
+          const i   = parseInt(col.dataset.i);
+          const row = schedule[i];
+          const x   = parseFloat(col.getAttribute('x')) + parseFloat(col.getAttribute('width')) / 2;
+          cursor.setAttribute('x1', x); cursor.setAttribute('x2', x);
+          cursor.setAttribute('opacity', '1');
+
+          const year  = Math.ceil(row.month / 12);
+          tip.innerHTML =
+            `<strong>${year}年目 / ${row.month}回目</strong><br>` +
+            `元金: ${fmt(row.principal)} 円<br>` +
+            `利息: ${fmt(row.interest)} 円<br>` +
+            `返済額: ${fmt(row.total)} 円`;
+
+          // SVG上の座標→wrap上のpx座標に変換
+          const svgRect  = svg.getBoundingClientRect();
+          const wrapRect = wrap.getBoundingClientRect();
+          const svgW     = svg.viewBox.baseVal.width;
+          const scaleX   = svgRect.width / svgW;
+          const px       = (x * scaleX) + (svgRect.left - wrapRect.left);
+          const tipW     = 170;
+          const left     = Math.min(px + 10, wrapRect.width - tipW - 4);
+          tip.style.left    = left + 'px';
+          tip.style.top     = '4px';
+          tip.style.display = 'block';
+        });
+        col.addEventListener('mouseleave', () => {
+          cursor.setAttribute('opacity', '0');
+          tip.style.display = 'none';
+        });
+      });
+    }, 0);
+
+    return `<div class="area-chart-wrap" id="${id}-wrap">${svgHtml}</div>`;
+  }
+
+  // ---- スケジュールテーブル（全月・年タブジャンプ付き） ----
   let currentSchedule = [];
   let currentHasNisa  = false;
 
-  function renderTable(schedule, page) {
-    const totalPages = Math.ceil(schedule.length / ROWS_PER_PAGE);
-    const start = (page - 1) * ROWS_PER_PAGE;
-    const end   = Math.min(start + ROWS_PER_PAGE, schedule.length);
-    const rows  = schedule.slice(start, end);
-
-    // 年タブ生成
+  function renderTable(schedule) {
     const totalYears = Math.ceil(schedule.length / 12);
+
+    // 年タブ
     let yearTabs = '<div class="year-tabs" id="year-tabs">';
     for (let y = 1; y <= totalYears; y++) {
-      const pageForYear = Math.ceil((y * 12) / ROWS_PER_PAGE);
-      const activeClass = (page >= Math.ceil(((y-1)*12+1) / ROWS_PER_PAGE) &&
-                           page <= Math.ceil((y*12) / ROWS_PER_PAGE)) ? 'active' : '';
-      yearTabs += `<button class="year-tab ${activeClass}" data-year="${y}">${y}年目</button>`;
+      yearTabs += `<button class="year-tab" data-year="${y}">${y}年目</button>`;
     }
     yearTabs += '</div>';
 
+    // 全月テーブル（行に id を付けてタブからジャンプ）
     let tableHtml = `
-      <div class="table-wrap">
+      <div class="table-wrap" id="schedule-table-wrap" style="max-height:420px;overflow-y:auto">
         <table>
           <thead>
             <tr>
@@ -778,13 +917,14 @@
           </thead>
           <tbody>
     `;
-    let cumulative = schedule.slice(0, start).reduce((s, r) => s + r.total, 0);
-    rows.forEach(row => {
+    let cumulative = 0;
+    schedule.forEach((row, idx) => {
       cumulative += row.total;
+      const rowId = `srow-${row.month}`;
       const nisaCell = currentHasNisa
         ? `<td class="td-nisa">${row.nisaValue != null ? fmt(row.nisaValue) + '円' : '—'}</td>`
         : '';
-      tableHtml += `<tr>
+      tableHtml += `<tr id="${rowId}">
         <td>${row.month}回</td>
         <td class="td-principal">${fmt(row.principal)}円</td>
         <td class="td-interest">${fmt(row.interest)}円</td>
@@ -796,50 +936,37 @@
     });
     tableHtml += `</tbody></table></div>`;
 
-    const paginationHtml = `
-      <div class="pagination">
-        <button id="pg-first" ${page === 1 ? 'disabled' : ''}>&laquo; 最初</button>
-        <button id="pg-prev"  ${page === 1 ? 'disabled' : ''}>&lsaquo; 前へ</button>
-        <span class="page-info">${page} / ${totalPages} ページ</span>
-        <button id="pg-next"  ${page === totalPages ? 'disabled' : ''}>次へ &rsaquo;</button>
-        <button id="pg-last"  ${page === totalPages ? 'disabled' : ''}>最後 &raquo;</button>
-      </div>
-    `;
+    document.getElementById('schedule-content').innerHTML = yearTabs + tableHtml;
 
-    document.getElementById('schedule-content').innerHTML = yearTabs + tableHtml + paginationHtml;
-
-    // 年タブイベント
+    // 年タブ → 該当行にスクロール
+    const tableWrap = document.getElementById('schedule-table-wrap');
     document.querySelectorAll('.year-tab').forEach(btn => {
       btn.addEventListener('click', () => {
         const y = parseInt(btn.dataset.year);
-        const targetPage = Math.ceil((y - 1) * 12 / ROWS_PER_PAGE) + 1;
-        currentPage = targetPage;
-        renderTable(currentSchedule, currentPage);
+        const firstMonth = (y - 1) * 12 + 1;
+        const targetRow  = document.getElementById('srow-' + firstMonth);
+        if (targetRow && tableWrap) {
+          tableWrap.scrollTop = targetRow.offsetTop - tableWrap.offsetTop;
+        }
+        document.querySelectorAll('.year-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
       });
     });
-
-    // ページネーションイベント
-    document.getElementById('pg-first').addEventListener('click', () => { currentPage = 1; renderTable(currentSchedule, currentPage); });
-    document.getElementById('pg-prev' ).addEventListener('click', () => { currentPage--;    renderTable(currentSchedule, currentPage); });
-    document.getElementById('pg-next' ).addEventListener('click', () => { currentPage++;    renderTable(currentSchedule, currentPage); });
-    document.getElementById('pg-last' ).addEventListener('click', () => { currentPage = totalPages; renderTable(currentSchedule, currentPage); });
   }
 
   // ---- 計算メイン ----
-  document.getElementById('calc-btn').addEventListener('click', () => {
+  function runSingle() {
     const P     = parseFloat(document.getElementById('principal').value) * 10000;
     const rate  = parseFloat(document.getElementById('rate').value);
     const years = parseInt(document.getElementById('years').value, 10);
-    const repay = document.querySelector('.repay-type input[type="radio"]:checked').value;
+    const repay = document.querySelector('#repay-type input[type="radio"]:checked').value;
 
-    if (isNaN(P) || P <= 0)     { alert('借入金額を正しく入力してください'); return; }
-    if (isNaN(rate) || rate < 0) { alert('年利を正しく入力してください'); return; }
-    if (isNaN(years) || years < 1) { alert('返済期間を正しく入力してください'); return; }
+    if (isNaN(P) || P <= 0 || isNaN(rate) || rate < 0 || isNaN(years) || years < 1) return;
 
     const nisaBalance = (parseFloat(document.getElementById('nisa-balance').value) || 0) * 10000;
     const nisaMonthly = parseFloat(document.getElementById('nisa-monthly').value) || 0;
     const nisaRate    = parseFloat(document.getElementById('nisa-rate').value)    || 0;
-    const hasNisa     = nisaBalance > 0 || nisaMonthly > 0;
+    const hasNisa     = true;
 
     const months = years * 12;
     const schedule = repay === 'equal_installment'
@@ -947,13 +1074,24 @@
           </div>
         </div>
       </div>
+      ${buildStackedBar(schedule)}
     `;
     document.getElementById('summary-content').innerHTML = summaryHtml;
 
     // テーブル表示
     document.querySelector('#schedule-card h2').textContent = '返済スケジュール（全' + months + '回）';
-    renderTable(currentSchedule, currentPage);
+    renderTable(currentSchedule);
+  }
+
+  // シミュレーション: ボタン＋入力変更でリアルタイム実行
+  document.getElementById('calc-btn').addEventListener('click', runSingle);
+  ['principal','rate','years','nisa-balance','nisa-monthly','nisa-rate'].forEach(id => {
+    document.getElementById(id).addEventListener('input', runSingle);
   });
+  document.querySelectorAll('#repay-type input[type="radio"]').forEach(r => {
+    r.addEventListener('change', runSingle);
+  });
+  runSingle();
 
   // ================================================================
   // 比較ビュー
@@ -1056,6 +1194,7 @@
           </div>
         </div>
       </div>
+      ${buildStackedBar(schedule)}
     `;
     document.getElementById(targetId).innerHTML = html;
   }
@@ -1143,8 +1282,8 @@
     `;
   }
 
-  // ---- 比較ボタン ----
-  document.getElementById('compare-btn').addEventListener('click', () => {
+  // ---- 比較計算 ----
+  function runCompare() {
     const PA    = parseFloat(document.getElementById('principal-a').value) * 10000;
     const rateA = parseFloat(document.getElementById('rate-a').value);
     const yrsA  = parseInt(document.getElementById('years-a').value, 10);
@@ -1155,12 +1294,8 @@
     const yrsB  = parseInt(document.getElementById('years-b').value, 10);
     const repB  = document.querySelector('#repay-type-b input[type="radio"]:checked').value;
 
-    if (isNaN(PA) || PA <= 0)      { alert('ケースA: 借入金額を正しく入力してください'); return; }
-    if (isNaN(rateA) || rateA < 0) { alert('ケースA: 年利を正しく入力してください'); return; }
-    if (isNaN(yrsA) || yrsA < 1)   { alert('ケースA: 返済期間を正しく入力してください'); return; }
-    if (isNaN(PB) || PB <= 0)      { alert('ケースB: 借入金額を正しく入力してください'); return; }
-    if (isNaN(rateB) || rateB < 0) { alert('ケースB: 年利を正しく入力してください'); return; }
-    if (isNaN(yrsB) || yrsB < 1)   { alert('ケースB: 返済期間を正しく入力してください'); return; }
+    if (isNaN(PA) || PA <= 0 || isNaN(rateA) || rateA < 0 || isNaN(yrsA) || yrsA < 1) return;
+    if (isNaN(PB) || PB <= 0 || isNaN(rateB) || rateB < 0 || isNaN(yrsB) || yrsB < 1) return;
 
     const schA = repA === 'equal_installment'
       ? calcEqualInstallment(PA, rateA, yrsA * 12)
@@ -1173,31 +1308,35 @@
     const nisaBalA  = (parseFloat(document.getElementById('nisa-balance-a').value) || 0) * 10000;
     const nisaMonA  = parseFloat(document.getElementById('nisa-monthly-a').value) || 0;
     const nisaRateA = parseFloat(document.getElementById('nisa-rate-a').value) || 0;
-    const hasNisaA  = nisaBalA > 0 || nisaMonA > 0;
-    if (hasNisaA) {
-      const vals = calcNisa(nisaBalA, nisaMonA, nisaRateA, yrsA * 12);
-      schA.forEach((row, i) => { row.nisaValue = vals[i]; });
-    }
+    const valsA = calcNisa(nisaBalA, nisaMonA, nisaRateA, yrsA * 12);
+    schA.forEach((row, i) => { row.nisaValue = valsA[i]; });
 
     const nisaBalB  = (parseFloat(document.getElementById('nisa-balance-b').value) || 0) * 10000;
     const nisaMonB  = parseFloat(document.getElementById('nisa-monthly-b').value) || 0;
     const nisaRateB = parseFloat(document.getElementById('nisa-rate-b').value) || 0;
-    const hasNisaB  = nisaBalB > 0 || nisaMonB > 0;
-    if (hasNisaB) {
-      const vals = calcNisa(nisaBalB, nisaMonB, nisaRateB, yrsB * 12);
-      schB.forEach((row, i) => { row.nisaValue = vals[i]; });
-    }
+    const valsB = calcNisa(nisaBalB, nisaMonB, nisaRateB, yrsB * 12);
+    schB.forEach((row, i) => { row.nisaValue = valsB[i]; });
 
     renderCompareSummary(schA, PA, repA, 'summary-a', '#1e3a5f',
-      { hasNisa: hasNisaA, balance: nisaBalA, monthly: nisaMonA });
+      { hasNisa: true, balance: nisaBalA, monthly: nisaMonA });
     renderCompareSummary(schB, PB, repB, 'summary-b', '#c07020',
-      { hasNisa: hasNisaB, balance: nisaBalB, monthly: nisaMonB });
+      { hasNisa: true, balance: nisaBalB, monthly: nisaMonB });
 
     // 折れ線グラフ
     const labelA = `A: ${Math.round(PA/10000)}万円 ${rateA}% ${yrsA}年`;
     const labelB = `B: ${Math.round(PB/10000)}万円 ${rateB}% ${yrsB}年`;
     document.getElementById('line-chart-wrap').innerHTML = buildLineChart(schA, schB, labelA, labelB);
     document.getElementById('compare-charts').style.display = '';
+  }
+
+  // 比較: ボタン＋入力変更でリアルタイム実行
+  document.getElementById('compare-btn').addEventListener('click', runCompare);
+  ['principal-a','rate-a','years-a','nisa-balance-a','nisa-monthly-a','nisa-rate-a',
+   'principal-b','rate-b','years-b','nisa-balance-b','nisa-monthly-b','nisa-rate-b'].forEach(id => {
+    document.getElementById(id).addEventListener('input', runCompare);
+  });
+  document.querySelectorAll('#repay-type-a input[type="radio"], #repay-type-b input[type="radio"]').forEach(r => {
+    r.addEventListener('change', runCompare);
   });
 </script>
 </body>
