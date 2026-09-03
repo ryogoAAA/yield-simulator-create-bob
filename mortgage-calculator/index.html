@@ -126,20 +126,6 @@
       margin: 8px 0 16px;
     }
 
-    .calc-btn {
-      width: 100%;
-      padding: 12px;
-      background: #1e3a5f;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background .2s;
-      margin-top: 8px;
-    }
-    .calc-btn:hover { background: #2c5282; }
 
     /* ---- Right Panel ---- */
     .right-panel { display: flex; flex-direction: column; gap: 20px; }
@@ -328,10 +314,6 @@
     }
     .compare-col-label.label-a { background: #1e3a5f; }
     .compare-col-label.label-b { background: #a05a00; }
-    .compare-btn-row {
-      text-align: center;
-      margin-bottom: 24px;
-    }
     .compare-summaries {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -451,7 +433,6 @@
       </div>
     </div>
 
-    <button class="calc-btn" id="calc-btn">計算する</button>
   </div>
 
   <!-- ===== 右: 結果パネル ===== -->
@@ -610,11 +591,6 @@
         </div>
       </div>
     </div><!-- /.compare-inputs -->
-
-    <!-- 比較ボタン -->
-    <div class="compare-btn-row">
-      <button class="calc-btn" id="compare-btn" style="width:auto;padding:12px 48px">比較する</button>
-    </div>
 
     <!-- 中段: サマリー 2列 -->
     <div class="compare-summaries">
@@ -809,9 +785,9 @@
     // 凡例
     const legY = MT + PH + 30;
     const legend = `
-      <circle cx="${ML+10}" cy="${legY-3}" r="5" fill="#3b82d4"/>
+      <circle cx="${ML+10}" cy="${legY-3}" r="5" fill="#1e3a5f"/>
       <text x="${ML+18}" y="${legY}" font-size="11" fill="#1f2328" font-weight="600">元金</text>
-      <circle cx="${ML+54}" cy="${legY-3}" r="5" fill="#f59e42"/>
+      <circle cx="${ML+54}" cy="${legY-3}" r="5" fill="#e05c2a"/>
       <text x="${ML+62}" y="${legY}" font-size="11" fill="#1f2328" font-weight="600">利息</text>
     `;
 
@@ -829,8 +805,8 @@
           <clipPath id="${id}-clip"><rect x="${ML}" y="${MT}" width="${PW}" height="${PH}"/></clipPath>
         </defs>
         <g clip-path="url(#${id}-clip)">
-          <path d="${principalArea}" fill="#3b82d4" opacity="0.85"/>
-          <path d="${interestArea}"  fill="#f59e42" opacity="0.85"/>
+          <path d="${principalArea}" fill="#1e3a5f"/>
+          <path d="${interestArea}"  fill="#e05c2a"/>
         </g>
         <line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+PH}" stroke="#d0d7de" stroke-width="1"/>
         <line x1="${ML}" y1="${MT+PH}" x2="${ML+PW}" y2="${MT+PH}" stroke="#d0d7de" stroke-width="1"/>
@@ -1083,8 +1059,7 @@
     renderTable(currentSchedule);
   }
 
-  // シミュレーション: ボタン＋入力変更でリアルタイム実行
-  document.getElementById('calc-btn').addEventListener('click', runSingle);
+  // シミュレーション: 入力変更でリアルタイム実行
   ['principal','rate','years','nisa-balance','nisa-monthly','nisa-rate'].forEach(id => {
     document.getElementById(id).addEventListener('input', runSingle);
   });
@@ -1329,8 +1304,7 @@
     document.getElementById('compare-charts').style.display = '';
   }
 
-  // 比較: ボタン＋入力変更でリアルタイム実行
-  document.getElementById('compare-btn').addEventListener('click', runCompare);
+  // 比較: 入力変更でリアルタイム実行
   ['principal-a','rate-a','years-a','nisa-balance-a','nisa-monthly-a','nisa-rate-a',
    'principal-b','rate-b','years-b','nisa-balance-b','nisa-monthly-b','nisa-rate-b'].forEach(id => {
     document.getElementById(id).addEventListener('input', runCompare);
