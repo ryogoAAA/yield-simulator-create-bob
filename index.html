@@ -495,11 +495,20 @@
 
         <div class="section-divider">2. 本融資・返済条件</div>
 
-        <div class="form-group">
-          <label>本融資 金利（年利）</label>
-          <div class="input-wrap">
-            <input type="number" id="br-main-rate" value="1.50" min="0.01" max="15" step="0.01" />
-            <span class="input-unit">%</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="form-group" style="margin-bottom:0">
+            <label style="color:#1e3a5f;">つなぎ側の本融資 年利</label>
+            <div class="input-wrap">
+              <input type="number" id="br-main-rate-tsunagi" value="1.50" min="0.01" max="15" step="0.01" />
+              <span class="input-unit">%</span>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label style="color:#10b981;">分割側の本融資 年利</label>
+            <div class="input-wrap">
+              <input type="number" id="br-main-rate-bunkatsu" value="1.50" min="0.01" max="15" step="0.01" />
+              <span class="input-unit">%</span>
+            </div>
           </div>
         </div>
 
@@ -1171,7 +1180,8 @@
 
   function runBridgeCompare() {
     try {
-      const mainRateEl = document.getElementById('br-main-rate');
+      const mainRateTsunagiEl = document.getElementById('br-main-rate-tsunagi');
+      const mainRateBunkatsuEl = document.getElementById('br-main-rate-bunkatsu');
       const yearsEl = document.getElementById('br-years');
       const repayRadio = document.querySelector('#repay-type-bridge input[type="radio"]:checked');
       const tsunagiRateEl = document.getElementById('br-tsunagi-rate');
@@ -1180,7 +1190,8 @@
       const includeFeeInLoanEl = document.getElementById('br-include-fee-in-loan');
       const nisaRateEl = document.getElementById('br-nisa-rate');
 
-      const mainRate = mainRateEl ? parseFloat(mainRateEl.value) : 1.5;
+      const mainRateTsunagi = mainRateTsunagiEl ? parseFloat(mainRateTsunagiEl.value) : 1.5;
+      const mainRateBunkatsu = mainRateBunkatsuEl ? parseFloat(mainRateBunkatsuEl.value) : 1.5;
       const years = yearsEl ? parseInt(yearsEl.value, 10) : 35;
       const mainMonths = Math.max(12, (isNaN(years) ? 35 : years) * 12);
       const repay = repayRadio ? repayRadio.value : 'equal_installment';
@@ -1270,10 +1281,10 @@
     const tsunagiExtraFees = intermediateCount * tsunagiFeePer;
     const tsunagiMainP = finalMainPrincipal + tsunagiTotalInterest;
 
-    // 本融資スケジュール (完成後 35年)
+    // 本融資スケジュール (完成後 35年: つなぎ用本融資年利)
     const tsunagiMainSchedule = repay === 'equal_installment'
-      ? calcEqualInstallment(tsunagiMainP, mainRate, mainMonths)
-      : calcEqualPrincipal(tsunagiMainP, mainRate, mainMonths);
+      ? calcEqualInstallment(tsunagiMainP, mainRateTsunagi, mainMonths)
+      : calcEqualPrincipal(tsunagiMainP, mainRateTsunagi, mainMonths);
 
     const maxConstMonths = Math.max(...stages.map(s => Math.ceil(s.months || 0)), 0);
 
@@ -1307,19 +1318,20 @@
     // -------------------------------------------------------------
     // 【プランB: 分割融資】
     // -------------------------------------------------------------
-    // 日割で実行日から本融資実行日までの利息を計算
+    // 日割で実行日から本融資実行日までの利息を計算（分割側の本融資利率を適用）
     let bunkatsuConstructionInterestTotal = 0;
     intermediateStages.forEach(s => {
-      const interest = s.amount * (mainRate / 100) * (s.days / 365);
+      const interest = s.amount * (mainRateBunkatsu / 100) * (s.days / 365);
       bunkatsuConstructionInterestTotal += interest;
     });
 
     const bunkatsuExtraFees = intermediateCount * bunkatsuFeePer;
     const bunkatsuMainP = finalMainPrincipal;
 
+    // 本融資スケジュール (完成後 35年: 分割用本融資年利)
     const bunkatsuMainSchedule = repay === 'equal_installment'
-      ? calcEqualInstallment(bunkatsuMainP, mainRate, mainMonths)
-      : calcEqualPrincipal(bunkatsuMainP, mainRate, mainMonths);
+      ? calcEqualInstallment(bunkatsuMainP, mainRateBunkatsu, mainMonths)
+      : calcEqualPrincipal(bunkatsuMainP, mainRateBunkatsu, mainMonths);
 
     const bunkatsuConstMonthlyPayments = [];
     for (let m = 1; m <= maxConstMonths; m++) {
@@ -1330,7 +1342,7 @@
           activeP += s.amount;
         }
       });
-      const monthlyInt = activeP * (mainRate / 100 / 12);
+      const monthlyInt = activeP * (mainRateBunkatsu / 100 / 12);
       bunkatsuConstMonthlyPayments.push({
         month: m,
         phase: 'bridge',
@@ -1431,6 +1443,7 @@
     renderBridgePlanSummary('br-tsunagi-summary', {
       type: 'つなぎ融資',
       constMonthly: '0 円（後払い上乗せ）',
+      mainRateApplied: mainRateTsunagi,
       mainMonthly: tsunagiMainSchedule[0].total,
       mainPrincipal: tsunagiMainP,
       totalPayment: tsunagiTotalPayment,
@@ -1444,6 +1457,7 @@
     renderBridgePlanSummary('br-bunkatsu-summary', {
       type: '分割融資',
       constMonthly: `約 ${fmt(bunkatsuConstMonthlyPayments.length > 0 ? bunkatsuConstMonthlyPayments[0].interest : 0)} 〜 ${fmt(bunkatsuConstMonthlyPayments.length > 0 ? bunkatsuConstMonthlyPayments[bunkatsuConstMonthlyPayments.length - 1].interest : 0)} 円`,
+      mainRateApplied: mainRateBunkatsu,
       mainMonthly: bunkatsuMainSchedule[0].total,
       mainPrincipal: bunkatsuMainP,
       totalPayment: bunkatsuTotalPayment,
@@ -1541,7 +1555,7 @@
     document.getElementById(targetId).innerHTML = `
       <div class="summary-grid" style="grid-template-columns:1fr 1fr;">
         <div class="summary-item highlight" style="grid-column:span 2">
-          <div class="s-label">本融資後の毎月返済額</div>
+          <div class="s-label">本融資後の毎月返済額 (年利 ${p.mainRateApplied}%)</div>
           <div class="s-val" style="color:${p.accentColor};font-size:20px">${fmt(p.mainMonthly)}<span>円/月</span></div>
         </div>
         <div class="summary-item">
@@ -1929,7 +1943,7 @@
   });
 
   // イベントリスナー登録 (Bridge)
-  ['br-main-rate','br-years','br-tsunagi-rate','br-tsunagi-fee-per','br-bunkatsu-fee-per','br-nisa-rate'].forEach(id => {
+  ['br-main-rate-tsunagi','br-main-rate-bunkatsu','br-years','br-tsunagi-rate','br-tsunagi-fee-per','br-bunkatsu-fee-per','br-nisa-rate'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', runBridgeCompare);
   });
